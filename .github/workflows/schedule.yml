@@ -57,7 +57,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npx playwright install chromium
+          npx playwright install --with-deps chromium
 
       - name: Run schedule generation script
         env:
