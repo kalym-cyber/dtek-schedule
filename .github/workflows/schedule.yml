@@ -52,10 +52,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Install dependencies
+      - name: Install Playwright Dependencies
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          npx playwright install-deps chromium || npx playwright install --with-deps chromium
 
       - name: Run schedule generation script
         env:
