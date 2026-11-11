@@ -52,7 +52,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-     - name: Install Playwright Dependencies
+     - name: Install Playwright Browsers
         run: |
           npm ci
           npx playwright install chromium
