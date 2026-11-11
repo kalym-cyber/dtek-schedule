@@ -1,6 +1,8 @@
 name: Run power outages schedule generator
 
 on:
+  schedule:
+    - cron: "0 * * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [check-schedule]
@@ -16,8 +18,8 @@ permissions:
 jobs:
   monitor:
     name: monitor${{ matrix.target && format(' ({0})', matrix.target) || '' }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -26,20 +28,36 @@ jobs:
     environment: ${{ matrix.target || null }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Checkout artifacts
+        run: |
+          REMOTE_BRANCH=$(git ls-remote --heads origin artifacts)
+
+          if [ -n "$REMOTE_BRANCH" ]; then
+            git fetch --depth 1 origin artifacts
+            git worktree add --detach artifacts FETCH_HEAD
+          else
+            git worktree add --orphan -b artifacts artifacts
+          fi
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright Browser
-        run: npx playwright install chromium
+        run: |
+          npm ci
+          npx playwright install chromium
 
       - name: Run schedule generation script
         env:
@@ -47,8 +65,9 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REGION: ${{ secrets.REGION }}
-          GROUPS: ${{ secrets.GROUP }}
+          GROUP: ${{ secrets.GROUP }}
         run: node ./src/schedule.js
+
       - name: Commit updated artifacts
         run: |
           git config user.name "github-actions"
